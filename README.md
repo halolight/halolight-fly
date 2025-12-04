@@ -1,36 +1,141 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HaloLight Fly.io
 
-## Getting Started
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Fly.io](https://img.shields.io/badge/Fly.io-Deployed-8B5CF6.svg?logo=fly.io)](https://halolight-fly.h7ml.cn)
+[![Next.js](https://img.shields.io/badge/Next.js-15-%23000000.svg)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-%233178C6.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-%2361DAFB.svg)](https://react.dev/)
 
-First, run the development server:
+HaloLight 后台管理系统的 **Fly.io 部署版本**，支持全球边缘部署、持久化存储和有状态服务。
+
+- 在线预览：<https://halolight-fly.h7ml.cn>
+- GitHub：<https://github.com/halolight/halolight-fly>
+
+## 功能亮点
+
+- **全球边缘部署**：35+ 区域就近部署
+- **Fly Machines**：微型虚拟机，按需启动
+- **Fly Volumes**：持久化 NVMe 存储
+- **Fly Postgres**：托管 PostgreSQL
+- **私有网络**：应用间私有通信
+- **自动扩缩容**：根据负载自动调整
+
+## 快速开始
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+# 克隆仓库
+git clone https://github.com/halolight/halolight-fly.git
+cd halolight-fly
+
+# 安装依赖
+pnpm install
+
+# 安装 Fly CLI
+brew install flyctl
+
+# 登录 Fly.io
+fly auth login
+
+# 本地开发
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 部署到 Fly.io
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+# 创建应用
+fly launch
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# 部署
+fly deploy
 
-## Learn More
+# 查看状态
+fly status
 
-To learn more about Next.js, take a look at the following resources:
+# 查看日志
+fly logs
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Fly.io 配置
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### fly.toml
 
-## Deploy on Vercel
+```toml
+app = "halolight-fly"
+primary_region = "hkg"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+[build]
+  dockerfile = "Dockerfile"
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+```
+
+### Dockerfile
+
+```dockerfile
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && pnpm install --frozen-lockfile
+COPY . .
+RUN pnpm build
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/public ./public
+EXPOSE 3000
+CMD ["node", "server.js"]
+```
+
+## 持久化存储
+
+```bash
+# 创建 Volume
+fly volumes create data --region hkg --size 10
+
+# 挂载到应用
+# 在 fly.toml 中添加:
+[mounts]
+  source = "data"
+  destination = "/data"
+```
+
+## Fly Postgres
+
+```bash
+# 创建 Postgres 集群
+fly postgres create
+
+# 连接到应用
+fly postgres attach --app halolight-fly
+```
+
+## 环境变量
+
+```bash
+# 设置密钥
+fly secrets set DATABASE_URL="postgres://..."
+fly secrets set API_KEY="your-api-key"
+```
+
+## 相关链接
+
+- [HaloLight 文档](https://halolight.docs.h7ml.cn)
+- [Fly.io 文档](https://fly.io/docs/)
+- [Fly.io Next.js](https://fly.io/docs/js/frameworks/nextjs/)
+
+## 许可证
+
+[MIT](LICENSE)

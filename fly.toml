@@ -1,0 +1,56 @@
+# fly.toml app configuration file generated for halolight-fly
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = 'halolight-fly'
+primary_region = 'nrt' # Tokyo region (使用距离用户最近的区域)
+kill_signal = 'SIGINT'
+kill_timeout = '5s'
+
+[build]
+  # 使用项目根目录的 Dockerfile
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3000'
+
+# 定义 HTTP 服务
+[[services]]
+  protocol = 'tcp'
+  internal_port = 3000
+  processes = ['app']
+
+  # HTTP 端口配置
+  [[services.ports]]
+    port = 80
+    handlers = ['http']
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ['tls', 'http']
+
+  # TCP 健康检查
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.tcp_checks]]
+    interval = '15s'
+    timeout = '2s'
+    grace_period = '1s'
+    restart_limit = 0
+
+  # HTTP 健康检查
+  [[services.http_checks]]
+    interval = '10s'
+    timeout = '2s'
+    grace_period = '5s'
+    method = 'get'
+    path = '/'
+    protocol = 'http'
+    restart_limit = 0
+    tls_skip_verify = false
+
+    [services.http_checks.headers]
+      User-Agent = 'Fly-Health-Check'
